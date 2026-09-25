@@ -1,0 +1,5 @@
+{
+  "feature": "kp_art_frac_mean",
+  "threshold": 0.0004318,
+  "note": "Доля кадра под тонкими яркими структурами вне коридора колонны (dxa_feat/f_kp.py). Порог подобран scripts/pipeline/delivery.py:calibrate_rules по всей выборке."
+}

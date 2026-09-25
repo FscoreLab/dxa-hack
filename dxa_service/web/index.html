@@ -1,0 +1,229 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Контроль качества DXA</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{--ground:#F5F6F8;--panel:#fff;--line:#D8DCE4;--ink:#141920;--ink2:#4A5462;
+      --ok:#2E8B63;--bad:#C7452F;--accent:#D9503C}
+@media (prefers-color-scheme:dark){:root{--ground:#0E1116;--panel:#161A21;--line:#2A313C;
+      --ink:#E7EBF1;--ink2:#B4BECC}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);
+     font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1040px;margin:0 auto;padding:28px 20px 60px}
+h1{font-size:23px;margin:0 0 4px}
+.sub{color:var(--ink2);margin:0 0 22px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:16px}
+.drop{border:2px dashed var(--line);border-radius:10px;padding:34px 18px;text-align:center;cursor:pointer}
+.drop.over{border-color:var(--accent);background:rgba(217,80,60,.05)}
+button{font:inherit;padding:9px 16px;border-radius:7px;border:1px solid var(--line);
+       background:var(--panel);color:var(--ink);cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.small{padding:3px 10px;font-size:13px}
+button[disabled]{opacity:.5;cursor:default}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--ink2);font-weight:600}
+.pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:13px;font-weight:600}
+.pill.ok{background:rgba(46,139,99,.14);color:var(--ok)}
+.pill.bad{background:rgba(199,69,47,.14);color:var(--bad)}
+.muted{color:var(--ink2)}
+.bar{height:6px;background:var(--line);border-radius:99px;overflow:hidden;min-width:70px}
+.bar>i{display:block;height:100%;background:var(--accent)}
+code{background:var(--ground);padding:1px 5px;border-radius:4px;font-size:13px}
+.err{color:var(--bad)}
+/* разбор случая: слева снимок, справа проверки */
+.case{display:grid;grid-template-columns:minmax(260px,460px) 1fr;gap:24px}
+@media (max-width:760px){.case{grid-template-columns:1fr}}
+.shot img{width:100%;border-radius:8px;border:1px solid var(--line);background:#000;display:block}
+.shot .cap{margin-top:7px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.head{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:12px}
+.head b{font-size:16px}
+.chk{border-bottom:1px solid var(--line);padding:9px 0}
+.chk:last-child{border-bottom:0}
+.chk .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.chk .name{flex:1;min-width:150px}
+.num{font-variant-numeric:tabular-nums}
+.shap{margin:8px 0 2px;font-size:13px}
+.shap .f{display:grid;grid-template-columns:1fr 62px 96px;gap:8px;align-items:center;padding:2px 0}
+.shap .imp{height:7px;background:var(--line);border-radius:99px;position:relative}
+.shap .imp>i{position:absolute;top:0;bottom:0;border-radius:99px}
+.shap .imp>i.up{background:var(--bad);left:50%}
+.shap .imp>i.dn{background:var(--ok);right:50%}
+.note{font-size:12.5px;color:var(--ink2);margin-top:6px}
+/* вердикт и проверки: главное крупно, подробности свёрнуты */
+.verdict{font-size:22px;font-weight:700;margin:0 0 14px}
+.verdict.ok{color:var(--ok)}.verdict.bad{color:var(--bad)}
+.item{display:grid;grid-template-columns:14px 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.item:last-of-type{border-bottom:0}
+.dot{width:12px;height:12px;border-radius:99px;margin-top:5px}
+.dot.ok{background:var(--ok)}.dot.bad{background:var(--bad)}
+.item .fact{color:var(--ink2)}
+.why{margin:6px 0 0;padding-left:18px}
+details{margin-top:16px;font-size:14px}
+summary{cursor:pointer;display:inline-block;padding:6px 12px;border:1px solid var(--line);border-radius:7px;color:var(--ink)}
+.tabs{display:flex;gap:0;margin-bottom:8px}
+.tabs button{border-radius:0;padding:5px 12px;font-size:13px}
+.tabs button:first-child{border-radius:7px 0 0 7px}
+.tabs button:last-child{border-radius:0 7px 7px 0;border-left:0}
+.tabs button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.legend{margin-top:8px;font-size:13px;color:var(--ink2);display:grid;gap:3px}
+.legend i{display:inline-block;width:14px;height:4px;border-radius:2px;vertical-align:middle;margin-right:7px}
+</style>
+<div class="wrap">
+  <h1>Контроль качества денситометрии</h1>
+  <p class="sub">Загрузите DICOM поясничного отдела или проксимального отдела бедра.
+     Сервис определит область, вынесет вердикт о годности, назовёт тип нарушения
+     и покажет, на чём это решение построено.</p>
+
+  <div class="card">
+    <div class="drop" id="drop">
+      <div><b>Перетащите файлы сюда</b> или нажмите, чтобы выбрать</div>
+      <div class="muted" style="margin-top:6px">DICOM, можно несколько</div>
+      <input type="file" id="pick" multiple hidden>
+    </div>
+    <div style="margin-top:14px;display:flex;gap:10px;align-items:center">
+      <button class="primary" id="go" disabled>Обработать</button>
+      <span class="muted" id="state"></span>
+    </div>
+  </div>
+
+  <div id="out"></div>
+
+</div>
+<script>
+const drop=document.getElementById('drop'),pick=document.getElementById('pick'),
+      go=document.getElementById('go'),state=document.getElementById('state'),
+      out=document.getElementById('out');
+let files=[];
+function show(){go.disabled=!files.length;
+  state.textContent=files.length?`выбрано файлов: ${files.length}`:'';}
+drop.onclick=()=>pick.click();
+pick.onchange=()=>{files=[...pick.files];show()};
+drop.ondragover=e=>{e.preventDefault();drop.classList.add('over')};
+drop.ondragleave=()=>drop.classList.remove('over');
+drop.ondrop=e=>{e.preventDefault();drop.classList.remove('over');
+  files=[...e.dataTransfer.files];show()};
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const num=(v,d=2)=>Number(v).toFixed(d);
+
+// вклад признака рисуется от середины: вправо — за нарушение, влево — против
+function shapRows(list){
+  if(!list||!list.length) return '';
+  const max=Math.max(...list.map(f=>Math.abs(f.impact)))||1;
+  return `<div class="shap">`+list.map(f=>{
+    const w=Math.abs(f.impact)/max*50, up=f.impact>=0;
+    return `<div class="f"><span>${esc(f.feature)}</span>
+      <span class="muted num">${f.value===-1?'—':esc(f.value)}</span>
+      <span class="imp"><i class="${up?'up':'dn'}" style="width:${w}%"></i></span></div>`;
+  }).join('')+`</div>`;
+}
+
+// «выступание …, мм» + 18.9 -> «выступание … — 18,9 мм»; флаги 0/1 — только если сработал
+const UNITS={'мм':' мм','градусы':'°','%':' %'};
+function reason(f){
+  const m=String(f.feature).match(/^(.*),\s*(мм|градусы|%)$/);
+  // -1 — служебное «не измерено» (так же в обучении), а не величина
+  if(f.value===-1) return /малого вертела/.test(f.feature)?'малый вертел не найден'
+                        :`${m?m[1]:f.feature} — не измерено`;
+  if(m) return `${m[1]} — ${num(f.value,1)}${UNITS[m[2]]}`;
+  if(f.value===0||f.value===1) return f.value===1?f.feature:'';
+  return `${f.feature}: ${num(f.value)}`;
+}
+function why(c){
+  // замеры с единицами понятнее безразмерных индексов: те идут, только если других нет
+  const pos=[...new Set((c.shap||[]).filter(f=>f.impact>0).map(reason).filter(Boolean))];
+  const plain=pos.filter(t=>!/: -?\d/.test(t));
+  const top=(plain.length?plain:pos).slice(0,3);
+  return top.length?`<ul class="why">${top.map(t=>`<li>${esc(t)}</li>`).join('')}</ul>`:'';
+}
+
+// одна строка на проверку: точка, что проверяли, главный замер против нормы
+function item(c){
+  let fact;
+  if(c.kind==='rule'&&c.unit==='°')
+    fact=`наклон ${num(c.value,1)}° при допустимых ${num(c.threshold,1)}°`;
+  else if(c.kind==='rule')
+    fact=c.fired?`тонкие яркие структуры вне позвоночника: ${num(c.value*100,2)} % кадра при допустимых ${num(c.threshold*100,2)} %`
+                :'посторонних структур вне позвоночника не найдено';
+  else
+    fact=`вероятность нарушения ${num(c.prob)} при пороге ${num(c.threshold)}`;
+  return `<div class="item"><span class="dot ${c.fired?'bad':'ok'}"></span><div>
+      <b>${esc(c.task)}</b> — ${c.fired?'нарушение':'в норме'}
+      <div class="fact">${esc(fact)}</div>${c.note?`<div class="fact">${esc(c.note)}</div>`:''}${c.fired?why(c):''}</div></div>`;
+}
+
+function more(j){
+  const heads=(j.checks||[]).filter(c=>c.shap&&c.shap.length);
+  return `<details><summary>Все замеры и их вклад ▾</summary>
+    <p class="note">Вероятность нарушения по области: ${num(Number(j.quality_prob||0))}.
+      ${j.details?esc(j.details):''}</p>
+    ${heads.map(c=>`<div class="chk"><b>${esc(c.task)}</b>${shapRows(c.shap)}</div>`).join('')}
+    ${heads.length?`<div class="note">Вклад замера: вправо — к нарушению, влево — к норме.
+      Вероятность — среднее двух моделей, градиентного бустинга и логрегрессии;
+      вклады показаны по бустингу.</div>`:''}
+  </details>`;
+}
+
+// цвета — те же, что в dxa_service/overlay.py
+const LEGEND={spine:[['#5AC8FF','центры тел позвонков'],['#5078FF','ось, по которой меряется наклон'],
+                     ['#FFDC3C','верх крыльев таза'],['#78AAFF','коридор колонны'],['#FF4646','посторонние предметы']],
+              hip:[['#FFAA3C','контур кости'],['#5078FF','ось диафиза'],['#78FF8C','опорные точки'],
+                   ['#FF8CC8','малый вертел и край кости, от которого меряется его выступ']]};
+
+function caseCard(name,j){
+  if(j.processing_status!=='Success'){
+    return `<div class="card"><div class="head"><b>${esc(name)}</b>
+      <span class="pill bad">ошибка</span>
+      <span class="muted">${esc(j.details||j.processing_status)}</span></div></div>`;
+  }
+  const bad=j.quality_class===1||j.quality_class==='1';
+  const leg=/позвоночник/i.test(j.anatomical_region||'')?LEGEND.spine:LEGEND.hip;
+  const id='i'+Math.random().toString(36).slice(2);
+  const shot=j.overlay?`<div class="shot">
+      <div class="tabs" data-img="${id}">
+        <button class="on" data-src="${j.overlay}">С разметкой</button>
+        <button data-src="${j.plain||j.overlay}">Исходный снимок</button>
+      </div>
+      <img id="${id}" src="${j.overlay}" alt="снимок с разметкой">
+      <div class="legend">${leg.map(([c,t])=>`<span><i style="background:${c}"></i>${t}</span>`).join('')}</div>
+      </div>`:'';
+  return `<div class="card">
+    <div class="head"><b>${esc(name)}</b><span class="muted">${esc(j.anatomical_region)}</span></div>
+    <div class="case">
+      ${shot}
+      <div>
+        <div class="verdict ${bad?'bad':'ok'}">${bad?'Нарушение: '+esc(j.violation_type||''):'Годно'}</div>
+        ${(j.checks||[]).map(item).join('')}
+        ${more(j)}
+      </div>
+    </div></div>`;
+}
+
+out.onclick=e=>{                       // переключатель «с разметкой / исходный снимок»
+  const b=e.target.closest('.tabs button');
+  if(!b) return;
+  const tabs=b.parentElement;
+  document.getElementById(tabs.dataset.img).src=b.dataset.src;
+  tabs.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
+};
+
+go.onclick=async()=>{
+  go.disabled=true;out.innerHTML='';
+  let done=0;
+  for(const f of files){
+    state.textContent=`обрабатывается ${++done} из ${files.length}: ${f.name}`;
+    const fd=new FormData();fd.append('file',f);
+    try{
+      const res=await fetch('/explain/file',{method:'POST',body:fd});
+      const j=await res.json();
+      out.insertAdjacentHTML('beforeend',caseCard(f.name,j));
+    }catch(e){
+      out.insertAdjacentHTML('beforeend',
+        `<div class="card"><b>${esc(f.name)}</b>
+          <div class="err">не удалось: ${esc(e)}</div></div>`);
+    }
+  }
+  state.textContent=`готово: ${files.length}`;go.disabled=false;
+};
+</script>

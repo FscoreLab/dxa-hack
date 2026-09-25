@@ -1,0 +1,8 @@
+.git
+# из кэша моделей в образ едет только SAM 3
+.hfcache/*
+!.hfcache/sam3
+data
+out
+**/__pycache__
+*.pyc
