@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import HistGradientBoostingClassifier
+from sklearn.ensemble import ExtraTreesClassifier, HistGradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
@@ -67,19 +67,25 @@ def prune_correlated(df: pd.DataFrame, cols: list[str], thr: float = 0.97) -> li
 
 
 class MeanOfTwo:
-    """Среднее бустинга и логрегрессии: выбор одной из двух на малой выборке — шум."""
+    """Среднее бустинга, логрегрессии и случайного леса: выбор одной модели на малой выборке — шум.
+
+    Имя класса сохранено ради совместимости с models/heads.pkl.
+    """
 
     def __init__(self):
         self.a = make_model("hgb")
         self.b = make_model("logreg")
+        self.c = make_model("et")
 
     def fit(self, X, y):
         self.a.fit(X, y)
         self.b.fit(X, y)
+        self.c.fit(X, y)
         return self
 
     def predict_proba(self, X):
-        p = 0.5 * (self.a.predict_proba(X)[:, 1] + self.b.predict_proba(X)[:, 1])
+        p = (self.a.predict_proba(X)[:, 1] + self.b.predict_proba(X)[:, 1]
+             + self.c.predict_proba(X)[:, 1]) / 3.0
         return np.column_stack([1 - p, p])
 
 
@@ -90,6 +96,11 @@ def make_model(kind: str):
         return HistGradientBoostingClassifier(
             max_depth=2, max_iter=150, learning_rate=0.06,
             min_samples_leaf=8, l2_regularization=1.0, random_state=RANDOM_STATE)
+    if kind == "et":
+        # n_jobs=1: лес обучается тысячи раз во вложенной CV, накладные расходы joblib дороже
+        return ExtraTreesClassifier(
+            n_estimators=300, min_samples_leaf=5, max_features=0.5,
+            class_weight="balanced", random_state=RANDOM_STATE, n_jobs=1)
     return make_pipeline(StandardScaler(),
                          LogisticRegression(max_iter=3000, C=0.3, class_weight="balanced"))
 

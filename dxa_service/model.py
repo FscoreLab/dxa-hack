@@ -73,7 +73,9 @@ HIP_HEADS = (("hip_positioning", "hip_positioning"), ("hip_roi_coverage", "hip_r
 class RuleModel:
     def __init__(self, heads: dict | None = None, refs: dict | None = None,
                  rules: dict | None = None):
-        self.heads = heads or {}
+        self.heads = dict(heads or {})
+        # центры нормы для колонок `_dev`: в сервис приходят сырые признаки кадра
+        self.centres = self.heads.pop("__centres__", None) or {}
         # опорные распределения для рангов; None — сервис уйдёт на запасную шкалу
         self.refs = refs if refs is not None else load_refs()
         self.rules = {**default_rules(), **(rules or {})}
@@ -107,18 +109,25 @@ class RuleModel:
             return -1.0
         return x if np.isfinite(x) else -1.0
 
-    @classmethod
-    def _value(cls, f: dict, col: str) -> float:
+    def _value(self, f: dict, col: str) -> float:
         """Значение колонки с учётом суффиксов агрегата (_mean/_min/_max) в обе стороны."""
         if col in f:
-            return cls._num(f[col])
+            return self._num(f[col])
         base, _, suf = col.rpartition("_")
         if suf in ("mean", "min", "max") and base in f:
-            return cls._num(f[base])
+            return self._num(f[base])
+        # Отклонение от нормы |величина - центр|; нет измерения — -1, как в обучении.
+        if suf == "dev" and base in self.centres:
+            raw = f.get(base, f.get(f"{base}_mean"))
+            try:
+                raw = float(raw)
+            except (TypeError, ValueError):
+                return -1.0
+            return abs(raw - self.centres[base]) if np.isfinite(raw) else -1.0
         # Обратное направление: правило просит базовое имя, а в агрегате лежит с суффиксом.
         for s in ("mean", "max", "min"):
             if f"{col}_{s}" in f:
-                return cls._num(f[f"{col}_{s}"])
+                return self._num(f[f"{col}_{s}"])
         return -1.0
 
     def _head(self, name: str, f: dict) -> bool:
