@@ -24,8 +24,8 @@
 ## Готовый образ
 
 ```
-docker pull crazyfrogspb/dxa-celsus:1.6
-docker run --rm --gpus all -p 6996:8000 -v /путь/к/данным:/data:ro crazyfrogspb/dxa-celsus:1.6
+docker pull crazyfrogspb/dxa-celsus:1.7
+docker run --rm --gpus all -p 6996:8000 -v /путь/к/данным:/data:ro crazyfrogspb/dxa-celsus:1.7
 ```
 
 Все веса, включая SAM 3, уже внутри; сеть при работе не нужна.

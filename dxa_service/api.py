@@ -128,6 +128,8 @@ async def predict_file(file: UploadFile) -> dict:
     # Служебное поле в контракт ответа не входит.
     out.pop("region_key", None)
     out["path_to_study"] = file.filename or ""
+    if file.filename:  # иначе у Failure в details имя временного файла, а не загруженного
+        out["details"] = out["details"].replace(Path(fh.name).name, file.filename)
     return out
 
 
@@ -150,6 +152,8 @@ async def explain_file(file: UploadFile) -> dict:
     out = asdict(row)
     out.pop("region_key", None)
     out["path_to_study"] = file.filename or ""
+    if file.filename:  # иначе у Failure в details имя временного файла, а не загруженного
+        out["details"] = out["details"].replace(Path(fh.name).name, file.filename)
     if frame is None:
         return {**out, "overlay": None, "checks": []}
     tilt = tilt_of(model(), frame["feats"]) if frame["region"] == "spine" else None
