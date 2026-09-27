@@ -53,7 +53,7 @@
 macro-F1 по пяти типам 0,639. \* Предварительные строки, меньше 15 нарушений.
 Интервалы — бутстрэп по исследованиям. F1, чувствительность и специфичность
 считаются по бинарному решению сервиса, ROC-AUC — по `quality_prob`.
-Сегментация бедра: IoU 0,890 (153 кадра). Успешно обработано 100 % файлов.
+Сегментация бедра: IoU 0,865 (153 кадра, сеть фолда не видела кадр). Успешно обработано 100 % файлов.
 
 ## Быстрый старт
 
@@ -63,12 +63,12 @@ macro-F1 по пяти типам 0,639. \* Предварительные ст�
 **Готовый образ** (все веса внутри, сеть при работе не нужна):
 
 ```bash
-docker pull crazyfrogspb/dxa-celsus:1.0
-docker run --rm --gpus all -p 6996:8000 -v /путь/к/dicom:/data/input:ro crazyfrogspb/dxa-celsus:1.0
+docker pull crazyfrogspb/dxa-celsus:1.5
+docker run --rm --gpus all -p 6996:8000 -v /путь/к/dicom:/data/input:ro crazyfrogspb/dxa-celsus:1.5
 curl localhost:6996/health
 # разовый прогон каталога в таблицу:
 docker run --rm --gpus all -v /путь/к/dicom:/data/input:ro -v $PWD/out:/data/output \
-    crazyfrogspb/dxa-celsus:1.0 python scripts/pipeline/run_service.py \
+    crazyfrogspb/dxa-celsus:1.5 python scripts/pipeline/run_service.py \
     --input /data/input --output /data/output/results.xlsx
 # рядом с таблицей — out/overlays.zip: картинка разбора на каждое изображение
 ```
@@ -78,7 +78,8 @@ docker run --rm --gpus all -v /путь/к/dicom:/data/input:ro -v $PWD/out:/dat
 (токен не нужен, версия заведомо та, на которой проверено качество):
 
 ```bash
-docker create --name sam3src crazyfrogspb/dxa-celsus:1.0
+mkdir -p .hfcache
+docker create --name sam3src crazyfrogspb/dxa-celsus:1.5
 docker cp sam3src:/app/.hfcache/sam3 .hfcache/sam3 && docker rm sam3src
 ```
 
@@ -92,7 +93,7 @@ hf download facebook/sam3 --revision 3c879f39826c281e95690f02c7821c4de09afae7 --
 Остальные веса — в `models/`. Сборка и запуск API:
 
 ```bash
-./run.sh serve 6996
+./run.sh serve 6996                 # каталог ./data монтируется в контейнер как /data
 curl localhost:6996/health          # все модели true, status ok
 ```
 
@@ -119,8 +120,9 @@ DXA_FORMAT=csv ./run.sh batch /путь/к/dicom ./out   # results.csv вмес�
 | диск | 20 ГБ (образ 10,4 ГБ) | 30 ГБ |
 
 Замер на RTX 3090 и 12 ядрах: позвоночник около 3 с на снимок вместе с
-картинкой разбора, бедро около 1 с; пик видеопамяти 7,7 ГБ, оперативной памяти
-контейнера 2,7 ГБ, загрузка до 3,5 ядер. Лимит ТЗ — 3 минуты на исследование.
+картинкой разбора, бедро около 1 с (одиночный запрос; в пакетном прогоне
+499 файлов — в среднем 5,6 и 1,6 с, максимум 24 с); пик видеопамяти 7,7 ГБ,
+оперативной памяти контейнера 2,7 ГБ, загрузка до 3,5 ядер. Лимит ТЗ — 3 минуты на исследование.
 Минимальная конфигурация — оценка по этому замеру, отдельно на ней не проверялась.
 
 - Базовый образ `python:3.11-slim` зафиксирован по digest в `Dockerfile`; все
