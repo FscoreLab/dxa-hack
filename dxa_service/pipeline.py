@@ -224,7 +224,7 @@ def analyse_file(path: str | Path, model=None,
         # ТЗ п. 2.5: статус ровно Success / Failure, причина — в details
         return Row(str(path.parent), "", "", REGION_NAMES["unknown"], "", "", "Failure",
                    round(time.perf_counter() - t0, 3),
-                   details=f"{type(exc).__name__}: {str(exc)[:120]}"), None
+                   details=f"{path.name}: {type(exc).__name__}: {str(exc)[:120]}"), None
 
 
 def process_file(path: str | Path, model=None) -> Row:
@@ -440,7 +440,7 @@ def process_dir(root: str | Path, model=None,
             bank.setdefault((row.study_uid, region), []).append(feats)
         except Exception as exc:
             row.processing_status = "Failure"
-            row.details = f"{type(exc).__name__}: {str(exc)[:120]}"
+            row.details = f"{path.name}: {type(exc).__name__}: {str(exc)[:120]}"
             row.quality_class, row.violation_type = "", ''
 
     agg: dict[str, dict[str, dict]] = {}

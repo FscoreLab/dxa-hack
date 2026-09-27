@@ -63,12 +63,12 @@ macro-F1 по пяти типам 0,639. \* Предварительные ст�
 **Готовый образ** (все веса внутри, сеть при работе не нужна):
 
 ```bash
-docker pull crazyfrogspb/dxa-celsus:1.5
-docker run --rm --gpus all -p 6996:8000 -v /путь/к/dicom:/data/input:ro crazyfrogspb/dxa-celsus:1.5
+docker pull crazyfrogspb/dxa-celsus:1.6
+docker run --rm --gpus all -p 6996:8000 -v /путь/к/dicom:/data/input:ro crazyfrogspb/dxa-celsus:1.6
 curl localhost:6996/health
 # разовый прогон каталога в таблицу:
 docker run --rm --gpus all -v /путь/к/dicom:/data/input:ro -v $PWD/out:/data/output \
-    crazyfrogspb/dxa-celsus:1.5 python scripts/pipeline/run_service.py \
+    crazyfrogspb/dxa-celsus:1.6 python scripts/pipeline/run_service.py \
     --input /data/input --output /data/output/results.xlsx
 # рядом с таблицей — out/overlays.zip: картинка разбора на каждое изображение
 ```
@@ -79,7 +79,7 @@ docker run --rm --gpus all -v /путь/к/dicom:/data/input:ro -v $PWD/out:/dat
 
 ```bash
 mkdir -p .hfcache
-docker create --name sam3src crazyfrogspb/dxa-celsus:1.5
+docker create --name sam3src crazyfrogspb/dxa-celsus:1.6
 docker cp sam3src:/app/.hfcache/sam3 .hfcache/sam3 && docker rm sam3src
 ```
 
