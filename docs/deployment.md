@@ -30,6 +30,16 @@ docker run --rm --gpus all -p 6996:8000 -v /путь/к/данным:/data:ro cr
 
 Все веса, включая SAM 3, уже внутри; сеть при работе не нужна.
 
+Если Docker Hub недоступен, тот же образ архивом в Yandex Object Storage
+(6,9 ГБ, ссылка действует до 15.10.2026 включительно):
+
+```bash
+curl -O https://storage.yandexcloud.net/dxa-hack-delivery-b751cef25ed7/dxa-celsus-1.7.tar.gz
+curl -O https://storage.yandexcloud.net/dxa-hack-delivery-b751cef25ed7/dxa-celsus-1.7.tar.gz.sha256
+sha256sum -c dxa-celsus-1.7.tar.gz.sha256
+docker load -i dxa-celsus-1.7.tar.gz     # появится crazyfrogspb/dxa-celsus:1.7
+```
+
 ## Сборка из исходников
 
 ```

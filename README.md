@@ -73,6 +73,16 @@ docker run --rm --gpus all -v /путь/к/dicom:/data/input:ro -v $PWD/out:/dat
 # рядом с таблицей — out/overlays.zip: картинка разбора на каждое изображение
 ```
 
+**Если Docker Hub недоступен** — тот же образ архивом в Yandex Object Storage
+(6,9 ГБ, ссылка действует до 15.10.2026 включительно):
+
+```bash
+curl -O https://storage.yandexcloud.net/dxa-hack-delivery-b751cef25ed7/dxa-celsus-1.7.tar.gz
+curl -O https://storage.yandexcloud.net/dxa-hack-delivery-b751cef25ed7/dxa-celsus-1.7.tar.gz.sha256
+sha256sum -c dxa-celsus-1.7.tar.gz.sha256
+docker load -i dxa-celsus-1.7.tar.gz     # появится crazyfrogspb/dxa-celsus:1.7
+```
+
 **Сборка из исходников.** Веса SAM 3 (около 3,3 ГБ) в репозиторий не входят —
 положите их в `.hfcache/sam3` до сборки. Проще всего взять их из готового образа
 (токен не нужен, версия заведомо та, на которой проверено качество):
