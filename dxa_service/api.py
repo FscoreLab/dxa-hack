@@ -20,7 +20,7 @@ from fastapi import Body, FastAPI, HTTPException, UploadFile
 from fastapi.responses import HTMLResponse, StreamingResponse
 
 from dxa_service.model import RuleModel
-from dxa_service.pipeline import process_dir, process_file
+from dxa_service.pipeline import COLUMNS, process_dir, process_file
 
 app = FastAPI(title="DXA quality control", version="1.0",
               description="Оценка качества денситометрических исследований")
@@ -213,7 +213,7 @@ def predict_zip(payload: dict = Body(..., example={"input": "/data/input"})):
 
     src = _safe_dir(str(payload.get("input", "/data/input")))
     pngs: dict[str, bytes] = {}
-    df = pd.DataFrame(process_dir(src, model(), overlays=pngs))
+    df = pd.DataFrame(process_dir(src, model(), overlays=pngs), columns=COLUMNS)
     table = io.BytesIO()
     df.to_excel(table, index=False)
     buf = io.BytesIO()
@@ -230,7 +230,7 @@ def _xlsx(raw: str) -> StreamingResponse:
     import pandas as pd
 
     src = _safe_dir(raw)
-    df = pd.DataFrame(process_dir(src, model()))
+    df = pd.DataFrame(process_dir(src, model()), columns=COLUMNS)
     buf = io.BytesIO()
     df.to_excel(buf, index=False)
     buf.seek(0)

@@ -4,6 +4,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import pandas as pd
 from dxa_service import process_dir, RuleModel
+from dxa_service.pipeline import COLUMNS
 
 ap = argparse.ArgumentParser(description="Оценка качества DXA-исследований")
 ap.add_argument("--input", "-i", required=True, help="каталог с DICOM (обходится рекурсивно)")
@@ -26,7 +27,10 @@ if not _segmenter():
 t0 = time.perf_counter()
 pngs = None if a.no_overlays else {}
 rows = process_dir(a.input, RuleModel.load(), overlays=pngs)
-df = pd.DataFrame(rows)
+df = pd.DataFrame(rows, columns=COLUMNS)
+if df.empty:
+    # опечатка в пути у docker -v молча монтирует пустой каталог
+    print(f"ВНИМАНИЕ: во входе {a.input} не найдено ни одного файла", file=sys.stderr)
 out = Path(a.output)
 (df.to_excel(out, index=False) if out.suffix == ".xlsx" else df.to_csv(out, index=False))
 if pngs is not None:
@@ -40,7 +44,7 @@ if pngs is not None:
 ok = (df.processing_status == "Success").sum()
 print(f"обработано {len(df)} изображений за {time.perf_counter()-t0:.1f} с")
 print(f"успешно {ok}, ошибок {len(df)-ok}, среднее время на файл "
-      f"{df.time_of_processing.mean():.3f} с")
+      f"{df.time_of_processing.mean() if len(df) else 0:.3f} с")
 if ok:
     d = df[df.processing_status == "Success"]
     print(f"с нарушением: {int((d.quality_class==1).sum())} из {ok}")

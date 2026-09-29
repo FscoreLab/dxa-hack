@@ -160,7 +160,10 @@ def draw_femur(img: np.ndarray, mask: np.ndarray, pts: dict | None,
         k, c, y0, y1 = line
         cv2.line(vis, (int((k * y0 + c) * scale), y0 * scale),
                  (int((k * y1 + c) * scale), y1 * scale), MEDIAL, 2, cv2.LINE_AA)
-    labels = [(names[k], int(x * scale) + 7, int(y * scale) - 8)
+    # у левого бедра большой вертел у правого края — подпись прижимаем внутрь кадра
+    labels = [(names[k], max(0, min(int(x * scale) + 7,
+                                    w * scale - int(0.62 * label_px * len(names[k])) - 4)),
+               int(y * scale) - 8)
               for k, (x, y) in (pts or {}).items() if k in names]
     vis = _labels(vis, labels, label_px)
     if lt is not None:
@@ -214,8 +217,15 @@ def draw_case(img: np.ndarray, region: str, side: str = "",
 
     P = _predict(a)
     lt = P.get(POINTS[0]) if P else None
-    return draw_femur(a, mm, femur_landmarks(mm, "right").get("_pts"), scale,
-                      label_px, lt=lt, line=medial_line(mm) if lt else None)
+    pts = femur_landmarks(mm, "right").get("_pts")
+    line = medial_line(mm) if lt else None
+    if side == "left":
+        # ⚠ рисуем по исходному кадру: иначе разбор левого бедра отражён относительно снимка
+        w = img.shape[1] - 1
+        pts = {k: (w - x, y) for k, (x, y) in pts.items()} if pts else pts
+        lt = (w - lt[0], lt[1]) if lt is not None else None
+        line = (-line[0], w - line[1], line[2], line[3]) if line is not None else None
+    return draw_femur(img, m, pts, scale, label_px, lt=lt, line=line)
 
 
 def png_data_uri(arr: np.ndarray, scale: int = 1) -> str:

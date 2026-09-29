@@ -69,6 +69,10 @@ class Row:
     details: str = ""
 
 
+# Колонки задаются явно: на пустом входе таблица иначе выходит без заголовков.
+COLUMNS = [f for f in Row.__dataclass_fields__ if f != "region_key"]
+
+
 def region_features(img: np.ndarray) -> dict:
     """Признаки формы для классификатора области."""
     m = bone_mask(img)
@@ -201,7 +205,7 @@ def analyse_file(path: str | Path, model=None,
         meta, img = read(path)
         region, side, conf = classify_region(img)
         if region == "unknown":
-            return Row(str(path.parent), meta.study_uid_tag, meta.sop_uid,
+            return Row(str(path), meta.study_uid_tag, meta.sop_uid,
                        REGION_NAMES["unknown"], "", "", "Failure",
                        round(time.perf_counter() - t0, 3),
                        details="анатомическая область не определена"), None
@@ -210,7 +214,7 @@ def analyse_file(path: str | Path, model=None,
         _add_pairs(by_region)
         agg = by_region[region]
         q, vt, det, p = verdict_for(model, region, agg)
-        row = Row(str(path.parent), meta.study_uid_tag, meta.sop_uid,
+        row = Row(str(path), meta.study_uid_tag, meta.sop_uid,
                   REGION_NAMES[region], q, vt, "Success",
                   round(time.perf_counter() - t0, 3),
                   details=det, quality_prob=round(float(p), 5), region_key=region)
@@ -222,7 +226,7 @@ def analyse_file(path: str | Path, model=None,
         return row, frame
     except Exception as exc:  # файл не должен ронять пакетную обработку
         # ТЗ п. 2.5: статус ровно Success / Failure, причина — в details
-        return Row(str(path.parent), "", "", REGION_NAMES["unknown"], "", "", "Failure",
+        return Row(str(path), "", "", REGION_NAMES["unknown"], "", "", "Failure",
                    round(time.perf_counter() - t0, 3),
                    details=f"{path.name}: {type(exc).__name__}: {str(exc)[:120]}"), None
 
